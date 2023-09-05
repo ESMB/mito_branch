@@ -24,12 +24,13 @@ import cv2
 from skan import draw
 from matplotlib.backends.backend_pdf import PdfPages
 import collections
+import copy
 # Path to images
 path="/Users/Mathew/Documents/Current analysis/Branch analysis/"
 path_intensity="/Users/Mathew/Documents/Current analysis/Branch analysis/Raw/"
 path_binary="/Users/Mathew/Documents/Current analysis/Branch analysis/Predicted/"
 
-
+# Comment
 
 
 filename_contains=".tif"
@@ -91,9 +92,11 @@ def analyse_labelled_image(labelled_image,original_image):
     measure_dataframe=pd.DataFrame.from_dict(measure_image)
     return measure_dataframe
 
-# This is to look at coincidence purely in terms of pixels
+def add_to_dataframe(df, measure_str, measure, n):
 
-
+                        df.loc[n] = [img] + [measure_str, np.average(measure), np.median(measure), np.std(measure),
+                                             np.std(measure) / np.sqrt(len(measure)), np.min(measure), np.max(measure),
+                                             len(measure)]
 
 
 directory=path_intensity
@@ -138,6 +141,12 @@ if not os.path.isdir(results_output):
 #
 # This just looks for files in the directory
 
+dataframe = pd.DataFrame(columns=["Image", "Measurement", "Average", "Median", "Standard Deviation",
+                                              "Standard Error", "Minimum", "Maximum", "N"])
+
+dataframe_branch = copy.copy(dataframe)
+n2=0
+
 for root, dirs, files in os.walk(path_intensity):
   for name in files:
     if filename_contains in name:
@@ -163,12 +172,13 @@ for root, dirs, files in os.walk(path_intensity):
                 im = Image.fromarray(labelled_im)
                 im.save(labelled_path+'/'+name)
                 
+                img=name
                 
                 # Measure intensity etc. 
                                 
                 labelled_img_props=analyse_labelled_image(labelled,image)
                 
-                labelled_img_props.to_csv(results_output+'/'+name+'/'+'lengths_brightness.csv', index=False)
+                labelled_img_props.to_csv(results_output+'/'+name+'_lengths_brightness.csv', index=False)
                                
                 
                 # Skeletonise
@@ -213,9 +223,25 @@ for root, dirs, files in os.walk(path_intensity):
 
                 curv_ind = grouped_branch_data_mean["curvature-index"].tolist()
                 
+                # grouped_branch_data_mean['n_branches']=n_branches
+                # grouped_branch_data_mean.to_csv(results_output+'/'+name+'_'+'Branch_data_mean.csv', index=False)
                 
-                branch_data.to_csv(results_output+'/'+name+'/'+'Branch_data.csv', index=False)
-            
+                # grouped_branch_data_sum['n_branches']=n_branches
+                # grouped_branch_data_sum.to_csv(results_output+'/'+name+'_'+'Branch_data_sum.csv', index=False)
+               
+                meas_str_l_branch = ["Number of branches", "Branch length", "Total branch length",
+                                       "Curvature index"]
+                meas_l_branch = [n_branches, branch_len, tot_branch_len, curv_ind]
+                
+                data = {header: values for header, values in zip(meas_str_l_branch, meas_l_branch)}
+                
+                # Create the DataFrame from the dictionary
+                df = pd.DataFrame(data)
+                df.to_csv(results_output+'/'+name+'_'+'Branch_data.csv', index=False)
+
+                # for m_str_b, mb in zip(meas_str_l_branch, meas_l_branch):
+                #    add_to_dataframe(dataframe_branch, m_str_b, mb, n2)
+                #    n2 += 1
                 # Some histograms
                 
                 # plt.hist(n_branches, bins = 5,range=[0,10], color='skyblue', edgecolor='black')
@@ -241,5 +267,34 @@ for root, dirs, files in os.walk(path_intensity):
                 # plt.ylabel('Number of mitochondria')
                 # # plt.savefig(path+'/'+'FRET_Small.pdf')
                 # plt.show()
-        
-    
+                
+                # Same output as previous code:
+                
+                # meas_str_l = ["Area", "Minor Axis Length", "Major Axis Length", "Eccentricity", "Perimeter",
+                #            "Solidity",
+                #            "Mean Intensity", "Max Intensity", "Min Intensity"]
+                # meas_l = [area, minor_axis_length, major_axis_length, eccentricity, perimeter, solidity, mean_int,
+                #        max_int,
+                #        min_int]
+
+             #########
+
+                meas_str_l_branch = ["Number of branches", "Branch length", "Total branch length",
+                                  "Curvature index"]
+                meas_l_branch = [n_branches, branch_len, tot_branch_len, curv_ind]
+
+             #########
+
+                 # for m_str, m in zip(meas_str_l, meas_l):
+                 #     add_to_dataframe(dataframe, m_str, m, n)
+                 #     n += 1
+
+                for m_str_b, mb in zip(meas_str_l_branch, meas_l_branch):
+                     add_to_dataframe(dataframe_branch, m_str_b, mb, n2)
+                     n2 += 1
+
+dataframe_branch.to_csv(path+'Branch_data.csv', index=False)
+
+
+
+  
